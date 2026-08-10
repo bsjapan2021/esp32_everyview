@@ -34,6 +34,6 @@ echo "== 산출물 =="; ls -la "$HERE/build"/*.bin 2>/dev/null || true
 # 2) 업로드 (포트 지정 시)
 if [[ -n "$PORT" ]]; then
   echo "== upload ($PORT) =="
-  arduino-cli upload -p "$PORT" --fqbn "${FQBN}:PSRAM=enabled" "$SKETCH"
+  arduino-cli upload -p "$PORT" --fqbn "${FQBN}" --input-dir "$HERE/build" "$SKETCH"
   echo "== monitor: arduino-cli monitor -p $PORT -c baudrate=115200 =="
 fi

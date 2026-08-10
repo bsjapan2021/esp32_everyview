@@ -94,7 +94,7 @@
 #define HEAP_MIN_STREAM_BYTES   40000         // 힙 40KB 미만 시 스트림 종료 (FR-8.4)
 
 // ─── OTA — FR-6 ────────────────────────────────────────────────────────────
-#define OTA_MANIFEST_URL  "https://github.com/bsjapan2021/esp32cam_guard/releases/latest/download/manifest.json"
+#define OTA_MANIFEST_URL  "https://github.com/bsjapan2021/esp32_everyview/releases/latest/download/manifest.json"
 #define OTA_CHECK_INTERVAL_MS   (24UL * 3600UL * 1000UL)  // 24시간 (자동적용 OFF)
 #define OTA_AUTO_APPLY          false
 
