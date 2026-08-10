@@ -231,6 +231,7 @@ void portalHandleSerial() {
   char c = Serial.read();
   if (c == 'w') portalForce();
   else if (c == 'W') portalFactoryReset();
+  else if (c == 'o') { extern void otaCheckAndApply(bool force); otaCheckAndApply(true); }  // OTA 강제 확인
 }
 
 void portalLoop() {

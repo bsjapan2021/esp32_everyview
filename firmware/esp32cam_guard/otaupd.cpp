@@ -8,6 +8,7 @@
 #include <Update.h>
 #include <mbedtls/sha256.h>
 #include "esp_ota_ops.h"
+#include "esp_task_wdt.h"
 
 extern bool notifySendText(const String& msg);
 
@@ -86,6 +87,7 @@ static bool downloadAndFlash(const String& url, const String& expectSha, size_t 
   size_t written = 0; int lastPct = -1;
   uint32_t lastMsg = 0;
   while (http.connected() && written < total) {
+    esp_task_wdt_reset();   // 대용량 다운로드 중 워치독 리셋 방지 (FR-8.1)
     size_t avail = stream->available();
     if (avail) {
       int n = stream->readBytes(buf, min(avail, sizeof(buf)));
