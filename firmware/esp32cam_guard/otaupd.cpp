@@ -148,8 +148,12 @@ void otaCheckAndApply(bool force) {
   if (cmp <= 0 && !force) { notifySendText("ℹ️ 이미 최신 버전(" FW_VERSION ")"); return; }
   if (cmp <= 0 && force)  { Serial.println(F("[ota] 강제 재설치")); }
 
+  // OTA는 수십 초 블로킹(TLS 핸드셰이크·리다이렉트·다운로드) → 이 구간만 loopTask를
+  // 워치독 감시에서 해제(다운로드 루프의 개별 reset로는 http.GET 블로킹을 못 먹임).
+  esp_task_wdt_delete(NULL);
   notifySendText("⬆️ OTA 시작: v" + ver);
   downloadAndFlash(url, sha, size);   // 성공 시 재부팅(반환 안 함)
+  esp_task_wdt_add(NULL);             // 다운로드 실패로 복귀 시 워치독 재등록
 }
 
 void otaLoop() {
