@@ -70,7 +70,8 @@ static bool downloadAndFlash(const String& url, const String& expectSha, size_t 
   HTTPClient http;
   if (!http.begin(client, url)) { notifySendText("❌ OTA: URL 열기 실패"); return false; }
   http.addHeader("Accept", "application/octet-stream");
-  const char* hdrs[] = {"Location"}; http.collectHeaders(hdrs, 1);
+  // GitHub Release 자산은 302로 CDN(objects.githubusercontent.com 등)으로 리다이렉트되므로 추적 필수
+  http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
   int code = http.GET();
   if (code != 200) { http.end(); notifySendText("❌ OTA: HTTP " + String(code)); return false; }
 
@@ -127,6 +128,7 @@ void otaCheckAndApply(bool force) {
   WiFiClientSecure client; client.setInsecure(); client.setTimeout(15000);
   HTTPClient http;
   if (!http.begin(client, OTA_MANIFEST_URL)) return;
+  http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);  // releases/latest/download/... 도 302 리다이렉트
   int code = http.GET();
   if (code != 200) { http.end(); Serial.printf("[ota] manifest HTTP %d\n", code); return; }
   String body = http.getString(); http.end();
