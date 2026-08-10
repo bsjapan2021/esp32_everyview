@@ -19,3 +19,7 @@
 
 // 클라우드/로컬 API 인증용 device_key (32자). 비우면 부팅 시 자동 생성.
 #define SECRET_DEVICE_KEY   ""
+
+// 캡티브 포털 AP 비밀번호(WPA2 8자+). 비우면 config.h 의 플레이스홀더 사용.
+//  ※ 공개 저장소 노출 방지를 위해 실제 값은 여기(secrets.h)에만 둔다.
+#define SECRET_AP_PASSWORD  ""

@@ -14,8 +14,10 @@
 
 // ─── 캡티브 포털(AP) 설정 — FR-1.1 ─────────────────────────────────────────
 //  esp-wifi-portal 스킬(WiFiManager) 오버라이드 매크로. portal 모듈이 이 값을 사용.
-#define AP_SSID_BASE            "GBSA0001"     // AP SSID (FR-1.1)
-#define AP_PASSWORD             "GBSA0001"     // WPA2 8자 (FR-1.1)
+#define AP_SSID_BASE            "EveryView-CAM"     // AP SSID (FR-1.1)
+//  실제 AP 비밀번호는 secrets.h 의 SECRET_AP_PASSWORD 로 주입(공개 저장소 노출 방지).
+//  아래는 secrets 미설정 시 폴백용 공개-안전 플레이스홀더(운영값 아님).
+#define AP_PASSWORD             "EveryView-Setup"   // WPA2 폴백(플레이스홀더)
 #define AP_SSID_SUFFIX_ENABLED  0              // 1이면 MAC 하위4자리 접미사 (FR-1.1.1)
 #define AP_IP_OCT               192,168,4,1    // 고정 AP IP
 #define AP_CHANNEL              1
@@ -24,7 +26,7 @@
 //  스킬 모듈(wifi_portal.*) 호환 오버라이드 (portal.cpp 에서 재정의될 수도 있음)
 #define WIFI_PORTAL_AP_NAME       AP_SSID_BASE
 #define WIFI_PORTAL_AP_PASSWORD   AP_PASSWORD
-#define WIFI_PORTAL_HOSTNAME      "gbsa0001"
+#define WIFI_PORTAL_HOSTNAME      "everyview-cam"
 #define WIFI_PORTAL_TIMEOUT_SEC   180
 
 // 설정 미완료 상태 자동 재부팅(정전 복구 후 무한 대기 방지) — FR-1.2.2

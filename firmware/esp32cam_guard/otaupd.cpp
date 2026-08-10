@@ -41,7 +41,7 @@ void otaBegin() {
 
   // 로컬 OTA (FR-6.1): 호스트명 gbsa0001-<MAC4>, 비번은 device_key 파생
   uint8_t mac[6]; WiFi.macAddress(mac);
-  char host[24]; snprintf(host, sizeof(host), "gbsa0001-%02x%02x", mac[4], mac[5]);
+  char host[24]; snprintf(host, sizeof(host), "everyview-%02x%02x", mac[4], mac[5]);
   ArduinoOTA.setHostname(host);
   if (strlen(g_cfg.deviceKey) >= 8) {
     String pw = String(g_cfg.deviceKey).substring(0, 12);

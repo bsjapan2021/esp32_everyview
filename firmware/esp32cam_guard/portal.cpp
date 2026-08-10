@@ -58,6 +58,10 @@ void portalLoadConfig() {
   if (strlen(g_cfg.tgChatId) == 0 && strlen(SECRET_TG_CHAT_ID) > 0)
     strlcpy(g_cfg.tgChatId, SECRET_TG_CHAT_ID, sizeof(g_cfg.tgChatId));
 
+  // AP 비밀번호: NVS 커스텀 값이 없어 config.h 플레이스홀더 그대로면 secrets.h 값 주입
+  if (strlen(SECRET_AP_PASSWORD) >= 8 && strcmp(g_cfg.apPassword, AP_PASSWORD) == 0)
+    strlcpy(g_cfg.apPassword, SECRET_AP_PASSWORD, sizeof(g_cfg.apPassword));
+
   // device_key 없으면 생성/저장
   if (strlen(g_cfg.deviceKey) < 32) {
     if (strlen(SECRET_DEVICE_KEY) >= 32) strlcpy(g_cfg.deviceKey, SECRET_DEVICE_KEY, sizeof(g_cfg.deviceKey));
