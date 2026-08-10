@@ -16,6 +16,7 @@ export function getServerEnv() {
     supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
     telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
+    telegramChatId: process.env.TELEGRAM_CHAT_ID ?? "",
     ingestDeviceKeySalt: process.env.INGEST_DEVICE_KEY_SALT ?? "",
   };
 }
@@ -34,8 +35,14 @@ export function isSupabaseBrowserConfigured(): boolean {
   );
 }
 
+/** Token alone is enough to identify the bot; sending also needs a target chat id. */
 export function isTelegramConfigured(): boolean {
   return Boolean(process.env.TELEGRAM_BOT_TOKEN);
+}
+
+/** True when both the bot token AND a target chat id are present (required to actually send). */
+export function isTelegramSendable(): boolean {
+  return Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
 }
 
 /** Online threshold: a device is "online" if seen within this window. */
