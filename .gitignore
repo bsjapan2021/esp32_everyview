@@ -1,0 +1,38 @@
+# ─── 비밀정보 (절대 커밋 금지) ───────────────────────────────
+firmware/esp32cam_guard/secrets.h
+web/.env.local
+web/.env*.local
+.env
+.env.local
+
+# ─── 펌웨어 빌드 산출물 ──────────────────────────────────────
+firmware/build/
+firmware/**/build/
+*.bin
+*.elf
+*.map
+*.partitions.bin
+manifest.json
+
+# ─── Node / Next.js ─────────────────────────────────────────
+web/node_modules/
+web/.next/
+web/out/
+web/.vercel/
+web/next-env.d.ts
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ─── OS / IDE ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# ─── 로그 / 임시 ────────────────────────────────────────────
+*.log
+tmp/
+.cache/

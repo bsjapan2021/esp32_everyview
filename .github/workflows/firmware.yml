@@ -1,0 +1,64 @@
+name: firmware
+
+# 태그 push(vX.Y.Z) 시 펌웨어 빌드 → GitHub Release 업로드 + manifest.json 생성 (FR-6.2)
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup arduino-cli
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install core & libraries
+        run: |
+          arduino-cli config init
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+          arduino-cli lib install "WiFiManager" "ArduinoJson"
+
+      - name: Create secrets.h (empty — 운영값은 포털/NVS)
+        run: cp firmware/esp32cam_guard/secrets.example.h firmware/esp32cam_guard/secrets.h
+
+      - name: Compile (4MB custom OTA partition — sketch partitions.csv auto-detected)
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32cam \
+            --build-property upload.maximum_size=1966080 \
+            --output-dir firmware/build \
+            firmware/esp32cam_guard
+
+      - name: Generate manifest.json
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          BIN="firmware/build/esp32cam_guard.ino.bin"
+          SHA=$(sha256sum "$BIN" | awk '{print $1}')
+          SIZE=$(stat -c%s "$BIN")
+          cat > manifest.json <<EOF
+          {
+            "version": "${VERSION}",
+            "build": "$(date +%Y%m%d).${GITHUB_RUN_NUMBER}",
+            "url": "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/firmware.bin",
+            "sha256": "${SHA}",
+            "size": ${SIZE},
+            "minVersion": "1.0.0",
+            "notes": "${GITHUB_REF_NAME} release"
+          }
+          EOF
+          cp "$BIN" firmware/build/firmware.bin
+          cat manifest.json
+
+      - name: Publish Release (firmware.bin + manifest.json)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            firmware/build/firmware.bin
+            manifest.json

@@ -1,0 +1,12 @@
+# ESP32CAM-Guard — 4MB 플래시 전용 양면 OTA 파티션 (FR-6.3.1 / D8)
+#  ※ 파일명은 partitions.csv 고정 — esp32 코어가 스케치 폴더의 partitions.csv 를 자동 사용.
+#    (PRD의 "partitions_ota.csv" 스킴과 동일 내용. build.partitions 속성 불필요)
+#  - 미디어는 SD 저장이므로 SPIFFS/LittleFS 파티션 없음 → app0/app1 최대화
+#  - app0·app1 각 1.875MB(0x1E0000), 롤백 가능(FR-6.3.3)
+#  - 8MB 클론 보드일 때만 default_8MB 계열 사용 (빌드 전 `esptool.py flash_id` 확인)
+# Name,     Type, SubType,  Offset,   Size,     Flags
+nvs,        data, nvs,      0x9000,   0x5000,
+otadata,    data, ota,      0xe000,   0x2000,
+app0,       app,  ota_0,    0x10000,  0x1E0000,
+app1,       app,  ota_1,    0x1F0000, 0x1E0000,
+coredump,   data, coredump, 0x3D0000, 0x10000,

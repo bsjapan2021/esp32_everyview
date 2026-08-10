@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* Class-based dark mode (html.dark). Default is dark for night monitoring. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Expose semantic design tokens as Tailwind color/font utilities.
+   `inline` keeps the var() references live so they follow the theme cascade. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-online: var(--online);
+  --color-offline: var(--offline);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/* Light theme values */
+:root {
+  --background: #f4f6fb;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #eef2f8;
+  --muted-foreground: #4a586e;
+  --border: #d9e0ec;
+  --input: #ffffff;
+  --ring: #2563eb;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --accent: #0891b2;
+  --accent-foreground: #ffffff;
+  --success: #16a34a;
+  --warning: #b45309;
+  --danger: #dc2626;
+  --online: #16a34a;
+  --offline: #8794a8;
+}
+
+/* Dark theme values (product default) */
+.dark {
+  --background: #090d16;
+  --foreground: #e6ebf4;
+  --card: #111826;
+  --card-foreground: #e6ebf4;
+  --muted: #1a2334;
+  --muted-foreground: #a6b3c9;
+  --border: #263143;
+  --input: #1a2334;
+  --ring: #3b82f6;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --accent: #22d3ee;
+  --accent-foreground: #06131a;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #f05252;
+  --online: #22c55e;
+  --offline: #64748b;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible focus for keyboard navigation (accessibility). */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Thin themed scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
