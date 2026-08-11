@@ -45,10 +45,21 @@ export async function POST(req: Request) {
     const supabase = getServiceClient();
     const { data, error } = await supabase.storage
       .from(BUCKET)
-      .createSignedUploadUrl(path);
+      .createSignedUploadUrl(path, { upsert: true });
     if (error) throw error;
     const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(path)
       .data.publicUrl;
+
+    // 경로를 서명 시점에 미리 이벤트에 기록한다. 기기의 후속 complete 호출은
+    // 대용량 PUT 뒤 TLS라 저사양에서 취약(응답코드 미검사) → 여기서 선기록하면
+    // sign+PUT만 성공하면 대시보드에 미디어가 확실히 뜬다. 실패해도 서명은 반환.
+    try {
+      const column = kind === "clip" ? "clip_url" : "snapshot_url";
+      await supabase.from("events").update({ [column]: path }).eq("id", event_id);
+    } catch {
+      /* 선기록 실패는 무시 — complete가 백업 경로 */
+    }
+
     return ok({
       configured: true,
       bucket: BUCKET,
