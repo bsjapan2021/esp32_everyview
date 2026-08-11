@@ -18,7 +18,11 @@ export async function POST(req: Request) {
   const body = await readJson(req);
   const v = validate(mediaCompleteSchema, body);
   if (!v.ok) return v.response;
-  const { event_id, snapshot_url, clip_url } = v.data;
+  const { event_id, kind, url } = v.data;
+  // 펌웨어는 { kind, url }로 보냄 → snapshot_url/clip_url로 매핑. 세션 클라이언트 호환 위해 직접 지정도 허용.
+  const snapshot_url =
+    v.data.snapshot_url ?? (kind === "snapshot" ? url : undefined);
+  const clip_url = v.data.clip_url ?? (kind === "clip" ? url : undefined);
 
   if (!snapshot_url && !clip_url) {
     return badRequest("snapshot_url 또는 clip_url 중 하나는 필요합니다.");

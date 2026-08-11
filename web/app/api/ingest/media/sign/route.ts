@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if (!v.ok) return v.response;
   const { event_id, kind, ext } = v.data;
 
-  const extension = (ext ?? (kind === "clip" ? "mp4" : "jpg")).replace(/^\./, "");
+  const extension = (ext ?? (kind === "clip" ? "avi" : "jpg")).replace(/^\./, "");
   const path = `${kind}/${event_id}.${extension}`;
 
   if (!isSupabaseServerConfigured()) {
@@ -53,9 +53,13 @@ export async function POST(req: Request) {
       configured: true,
       bucket: BUCKET,
       path: data.path,
+      // `url` — 펌웨어(cloudUploadMedia)가 읽는 PUT 대상 필드명
+      url: data.signedUrl,
       signedUrl: data.signedUrl,
       token: data.token,
       method: "PUT",
+      // 비공개 버킷이라 publicUrl은 조회용으로 안 씀 → 펌웨어는 path를 저장하고
+      // 대시보드가 조회 시 서명 다운로드 URL을 발급한다.
       publicUrl,
     });
   } catch {

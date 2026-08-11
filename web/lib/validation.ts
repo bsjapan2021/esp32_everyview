@@ -39,8 +39,12 @@ export type MediaSignInput = z.infer<typeof mediaSignSchema>;
 /** POST /api/ingest/media/complete — attach uploaded media URLs to an event. */
 export const mediaCompleteSchema = z.object({
   event_id: z.string().min(1),
-  snapshot_url: z.string().url().optional(),
-  clip_url: z.string().url().optional(),
+  // 펌웨어(cloudUploadMedia)는 { kind, url } 형태로 저장 경로(path)를 보낸다.
+  kind: z.enum(["snapshot", "clip"]).optional(),
+  url: z.string().max(500).optional(),
+  // 저장값은 스토리지 경로(비공개 버킷) 또는 전체 URL 모두 허용 → .url() 완화
+  snapshot_url: z.string().max(500).optional(),
+  clip_url: z.string().max(500).optional(),
 });
 export type MediaCompleteInput = z.infer<typeof mediaCompleteSchema>;
 

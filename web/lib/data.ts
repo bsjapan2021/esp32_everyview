@@ -109,6 +109,25 @@ export async function getEvents(
   }
 }
 
+const MEDIA_BUCKET = "media";
+
+/** 비공개 버킷 경로 → 단기 서명 다운로드 URL. 이미 http/data URI면 그대로. */
+async function signStoragePath(
+  supabase: ReturnType<typeof getServiceClient>,
+  value: string | null,
+): Promise<string | null> {
+  if (!value) return value;
+  if (value.startsWith("http") || value.startsWith("data:")) return value;
+  try {
+    const { data } = await supabase.storage
+      .from(MEDIA_BUCKET)
+      .createSignedUrl(value, 3600);
+    return data?.signedUrl ?? value;
+  } catch {
+    return value;
+  }
+}
+
 export async function getEventById(id: string): Promise<EventWithDevice | null> {
   if (!isSupabaseServerConfigured()) {
     return mockEvents().find((e) => e.id === id) ?? null;
@@ -121,7 +140,12 @@ export async function getEventById(id: string): Promise<EventWithDevice | null> 
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return (data as EventWithDevice | null) ?? null;
+    const ev = (data as EventWithDevice | null) ?? null;
+    if (ev) {
+      ev.snapshot_url = await signStoragePath(supabase, ev.snapshot_url);
+      ev.clip_url = await signStoragePath(supabase, ev.clip_url);
+    }
+    return ev;
   } catch {
     return mockEvents().find((e) => e.id === id) ?? null;
   }
