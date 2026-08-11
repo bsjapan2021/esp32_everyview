@@ -155,10 +155,20 @@ static void handleEvent(const MotionResult& r) {
     if (thumb) free(thumb);
     if (id.length()) {
       if (haveSnap) cloudUploadMedia(id, "snapshot", snap, snapLen, "image/jpeg");
-      // 클립은 상한(1.5MB) 내에서만 업로드, 초과 시 SD/로컬 링크 의존
-      size_t clen = 0;
-      uint8_t* cbuf = readFile(aviPath, &clen, 1500000);
-      if (cbuf) { cloudUploadMedia(id, "clip", cbuf, clen, "video/x-msvideo"); free(cbuf); }
+      // 클립 업로드: 5초 SVGA MJPEG-AVI는 보통 1.5~2.5MB라 이전 1.5MB 상한에 걸려
+      // 스킵됐다. PSRAM(ps_malloc) 여유 내에서 3.5MB까지 허용해 대시보드 영상 재생 지원.
+      // 초과분만 SD/로컬 링크에 의존. WDT는 handleEvent 진입 시 해제돼 있어 안전.
+      if (g_cfg.clipEnabled) {
+        size_t clen = 0;
+        uint8_t* cbuf = readFile(aviPath, &clen, 3500000);
+        if (cbuf) {
+          bool okc = cloudUploadMedia(id, "clip", cbuf, clen, "video/x-msvideo");
+          free(cbuf);
+          Serial.printf("[evt] 클립 업로드 %s (%u bytes)\n", okc ? "OK" : "실패", (unsigned)clen);
+        } else {
+          Serial.println(F("[evt] 클립 업로드 스킵(파일 없음 또는 3.5MB 초과)"));
+        }
+      }
     }
   }
 

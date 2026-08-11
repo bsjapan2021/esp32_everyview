@@ -14,6 +14,7 @@ import { Card } from "@/components/ui";
 import { DetectionTime } from "@/components/detection-time";
 import { TriggerBadge, RssiIndicator } from "@/components/indicators";
 import { EventActions } from "@/components/events/event-actions";
+import { MjpegPlayer } from "@/components/events/mjpeg-player";
 import { getEventById, getDevices } from "@/lib/data";
 import { formatDateTimeKST } from "@/lib/time";
 import { triggerLabel } from "@/lib/utils";
@@ -83,17 +84,14 @@ export default async function EventDetailPage({
           {isPlayable(event.clip_url) ? (
             <Card className="overflow-hidden">
               <div className="flex items-center gap-2 p-3 text-sm font-medium">
-                <Video className="h-4 w-4" aria-hidden /> 클립 영상
+                <Video className="h-4 w-4" aria-hidden /> 클립 영상 (5초)
               </div>
-              <video
-                src={event.clip_url ?? undefined}
-                controls
-                playsInline
-                className="w-full bg-black"
-                aria-label={`${formatDateTimeKST(event.detected_at)} 감지 클립 영상`}
-              >
-                <track kind="captions" label="캡션 없음" />
-              </video>
+              {/* MJPEG-AVI는 브라우저 <video> 미지원 → JPEG 프레임 추출 canvas 재생 */}
+              <MjpegPlayer
+                src={event.clip_url as string}
+                poster={image}
+                fps={10}
+              />
             </Card>
           ) : event.clip_url || event.local_path ? (
             <Card className="p-4 text-sm text-muted-foreground">
