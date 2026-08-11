@@ -178,8 +178,11 @@ void otaCheckAndApply(bool force) {
 
   int cmp = semverCmp(ver, FW_VERSION);
   Serial.printf("[ota] 현재 %s / 최신 %s\n", FW_VERSION, ver.c_str());
-  if (cmp <= 0 && !force) { notifySendText("ℹ️ 이미 최신 버전(" FW_VERSION ")"); return; }
-  if (cmp <= 0 && force)  { Serial.println(F("[ota] 강제 재설치")); }
+  // 동일 버전은 force(수동 /ota)여도 재플래시 금지 — 안 그러면 같은 펌웨어를 다시 굽고
+  // 재부팅→(오프셋 미보존이라)/ota 재실행 무한 재플래시 루프에 빠진다.
+  if (cmp == 0) { notifySendText("ℹ️ 이미 최신 버전(" FW_VERSION ") — 재설치 생략"); return; }
+  if (cmp < 0 && !force) { notifySendText("ℹ️ 현재가 더 최신(" FW_VERSION ")"); return; }
+  if (cmp < 0 && force)  { Serial.println(F("[ota] 강제 다운그레이드")); }
 
   // OTA는 수십 초 블로킹(TLS 핸드셰이크·리다이렉트·다운로드) → 이 구간만 loopTask를
   // 워치독 감시에서 해제(다운로드 루프의 개별 reset로는 http.GET 블로킹을 못 먹임).

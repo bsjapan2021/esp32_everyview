@@ -6,6 +6,7 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
 #include "esp_task_wdt.h"
 
 // otaupd / portal 액션 (약결합)
@@ -15,6 +16,25 @@ extern void portalForce();
 static const char* TG_HOST = "api.telegram.org";
 static long  s_updateOffset = 0;
 static uint32_t s_lastPoll = 0;
+
+// getUpdates 오프셋을 NVS에 보존한다. RAM에만 두면 재부팅 시 0으로 돌아가
+// 마지막 확인 전 명령(/ota·/reboot 등)을 다시 읽어 실행→재부팅 루프가 생긴다.
+static Preferences s_tgPrefs;
+static bool s_offsetLoaded = false;
+static void loadUpdateOffset() {
+  if (s_offsetLoaded) return;
+  if (s_tgPrefs.begin("tg", true)) {           // 읽기전용
+    s_updateOffset = s_tgPrefs.getLong("off", 0);
+    s_tgPrefs.end();
+  }
+  s_offsetLoaded = true;
+}
+static void saveUpdateOffset() {
+  if (s_tgPrefs.begin("tg", false)) {
+    s_tgPrefs.putLong("off", s_updateOffset);
+    s_tgPrefs.end();
+  }
+}
 
 // ─── TLS 정책 — FR-5.9 ─────────────────────────────────────────────────────
 //  기본은 CA 검증이 목표이나, 현장 CA 만료 리스크(R15)와 무테스트 배포를 고려해
@@ -256,6 +276,7 @@ void notifyPoll() {
   if (millis() - s_lastPoll < 3000) return;              // 3초 주기
   s_lastPoll = millis();
 
+  loadUpdateOffset();   // 첫 호출 시 NVS에서 오프셋 복원(재부팅 후 명령 재실행 방지)
   String q = "?timeout=1&limit=3&offset=" + String(s_updateOffset);
   String resp;
   if (!tgApiGet("getUpdates", q, resp)) return;
@@ -276,6 +297,7 @@ void notifyPoll() {
   for (JsonObject upd : result) {
     long updateId = upd["update_id"] | 0;
     s_updateOffset = updateId + 1;
+    saveUpdateOffset();   // 명령 실행 '전에' 확정 저장 — /ota·/reboot가 재부팅해도 재실행 안 됨
 
     if (upd.containsKey("message")) {
       JsonObject msg = upd["message"];
