@@ -81,6 +81,9 @@ export default async function EventDetailPage({
             </div>
           </Card>
 
+          {/* 클립 카드는 '재생 가능한(=스토리지에 실제 존재하는) 클립'이 있을 때만 표시.
+              getEventById가 파일 없는 clip_url을 null로 정리하므로 유령 클립은 안 뜬다.
+              스냅샷 SD 경로(local_path)는 하단 다운로드 카드에만 노출한다. */}
           {isPlayable(event.clip_url) ? (
             <Card className="overflow-hidden">
               <div className="flex items-center gap-2 p-3 text-sm font-medium">
@@ -92,19 +95,6 @@ export default async function EventDetailPage({
                 poster={image}
                 fps={10}
               />
-            </Card>
-          ) : event.clip_url || event.local_path ? (
-            <Card className="p-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2 font-medium text-foreground">
-                <Video className="h-4 w-4" aria-hidden /> 클립 영상
-              </div>
-              <p className="mt-1">
-                원본 영상은 디바이스 SD 카드 또는 클라우드 스토리지에 저장되어
-                있습니다.
-              </p>
-              {event.local_path ? (
-                <p className="mt-1 font-mono text-xs">{event.local_path}</p>
-              ) : null}
             </Card>
           ) : null}
         </div>

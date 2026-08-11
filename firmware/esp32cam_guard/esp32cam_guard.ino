@@ -155,16 +155,28 @@ static void handleEvent(const MotionResult& r) {
     if (thumb) free(thumb);
     if (id.length()) {
       if (haveSnap) cloudUploadMedia(id, "snapshot", snap, snapLen, "image/jpeg");
-      // 클립 업로드: 5초 SVGA MJPEG-AVI는 보통 1.5~2.5MB라 이전 1.5MB 상한에 걸려
-      // 스킵됐다. PSRAM(ps_malloc) 여유 내에서 3.5MB까지 허용해 대시보드 영상 재생 지원.
-      // 초과분만 SD/로컬 링크에 의존. WDT는 handleEvent 진입 시 해제돼 있어 안전.
+      // 스냅샷 업로드가 끝나면 snap(UXGA ~80KB+)을 '즉시' 해제한다. 뒤이은 클립
+      // 업로드의 TLS 핸드셰이크는 내부RAM ~40KB가 필요한데, 카메라 활성 상태라
+      // 내부RAM이 빠듯해 대용량 클립 PUT이 간헐 실패/크래시하던 원인을 줄인다.
+      if (snap) { free(snap); snap = nullptr; }
+
+      // 클립 업로드: 5초 SVGA MJPEG-AVI는 보통 1.5~2.5MB. PSRAM(ps_malloc) 내 3.5MB까지
+      // 허용(초과분만 SD 의존). 실패 시 1회 재시도 — sign이 upsert라 재PUT 안전.
+      // WDT는 handleEvent 진입 시 해제돼 있어 이 구간 블로킹은 안전.
       if (g_cfg.clipEnabled) {
         size_t clen = 0;
         uint8_t* cbuf = readFile(aviPath, &clen, 3500000);
         if (cbuf) {
-          bool okc = cloudUploadMedia(id, "clip", cbuf, clen, "video/x-msvideo");
+          Serial.printf("[evt] 클립 업로드 시작 %u bytes (free heap=%u, min=%u)\n",
+                        (unsigned)clen, (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getMinFreeHeap());
+          bool okc = false;
+          for (int attempt = 0; attempt < 2 && !okc; attempt++) {
+            if (attempt) { Serial.println(F("[evt] 클립 업로드 재시도")); delay(400); }
+            okc = cloudUploadMedia(id, "clip", cbuf, clen, "video/x-msvideo");
+          }
           free(cbuf);
-          Serial.printf("[evt] 클립 업로드 %s (%u bytes)\n", okc ? "OK" : "실패", (unsigned)clen);
+          Serial.printf("[evt] 클립 업로드 %s (%u bytes)\n",
+                        okc ? "OK" : "실패(재시도 포함)", (unsigned)clen);
         } else {
           Serial.println(F("[evt] 클립 업로드 스킵(파일 없음 또는 3.5MB 초과)"));
         }
@@ -172,7 +184,7 @@ static void handleEvent(const MotionResult& r) {
     }
   }
 
-  if (snap) free(snap);
+  if (snap) free(snap);   // 위에서 해제됐으면 nullptr → no-op
 
   // 6) 저장 후 용량 점검
   if (storageFreeLow()) {

@@ -111,7 +111,12 @@ export async function getEvents(
 
 const MEDIA_BUCKET = "media";
 
-/** 비공개 버킷 경로 → 단기 서명 다운로드 URL. 이미 http/data URI면 그대로. */
+/**
+ * 비공개 버킷 경로 → 단기 서명 다운로드 URL. 이미 http/data URI면 그대로.
+ * createSignedUrl은 파일이 실제로 있어야 성공하므로 존재 확인도 겸한다.
+ * 파일이 없으면(예: sign 시점에 경로만 선기록됐지만 기기 PUT이 실패) null을 반환해
+ * "clip_url은 있는데 파일은 없는" 유령 상태를 페이지에서 미표시로 처리한다.
+ */
 async function signStoragePath(
   supabase: ReturnType<typeof getServiceClient>,
   value: string | null,
@@ -119,12 +124,13 @@ async function signStoragePath(
   if (!value) return value;
   if (value.startsWith("http") || value.startsWith("data:")) return value;
   try {
-    const { data } = await supabase.storage
+    const { data, error } = await supabase.storage
       .from(MEDIA_BUCKET)
       .createSignedUrl(value, 3600);
-    return data?.signedUrl ?? value;
+    if (error || !data?.signedUrl) return null; // 파일 없음/서명 실패 → 미디어 없음 처리
+    return data.signedUrl;
   } catch {
-    return value;
+    return null;
   }
 }
 
