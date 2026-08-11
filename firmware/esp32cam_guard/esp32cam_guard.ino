@@ -94,6 +94,9 @@ static uint8_t* readFile(const String& path, size_t* len, size_t maxLen) {
 
 // ─── 이벤트 처리 파이프라인 ────────────────────────────────────────────────
 static void handleEvent(const MotionResult& r) {
+  // 이벤트 처리(캡처+SD+텔레그램 재시도 백오프+클라우드 업로드)는 장시간 블로킹이라
+  // loopTask를 이 구간만 워치독 감시에서 해제(재부팅 루프 방지). 끝에서 복원.
+  esp_task_wdt_delete(NULL);
   time_t t = tkNow();
   String iso   = tkStampISO(t);
   String base  = storageEventBase(t);           // /DCIM/date/EVT_...
@@ -166,6 +169,8 @@ static void handleEvent(const MotionResult& r) {
     int n = storagePurge();
     if (n) notifySystem("💾 순환삭제 " + String(n) + "개 폴더 (SD " + String(g_rt.sdUsedPct) + "%)");
   }
+
+  esp_task_wdt_add(NULL);   // 워치독 감시 복원
 }
 
 // ─── NTP 미동기 이벤트 소급보정 (FR-4.7) ───────────────────────────────────

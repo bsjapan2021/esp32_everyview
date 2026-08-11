@@ -9,6 +9,7 @@
 #include <mbedtls/sha256.h>
 #include "esp_ota_ops.h"
 #include "esp_task_wdt.h"
+#include "esp_camera.h"
 
 extern bool notifySendText(const String& msg);
 
@@ -65,15 +66,47 @@ void otaMarkValidAfterSelfTest() {
   }
 }
 
+// GitHub Release 자산의 302(→ release-assets.githubusercontent.com 등 다른 호스트)를
+// 수동 추적. setFollowRedirects는 교차호스트 재-TLS에서 자주 실패하므로 직접 처리.
+static bool resolveRedirect(const String& url, String& out) {
+  WiFiClientSecure c; c.setInsecure(); c.setTimeout(15000);
+  HTTPClient http;
+  if (!http.begin(c, url)) { Serial.println(F("[ota] 리다이렉트 begin 실패")); return false; }
+  const char* hdr[] = {"Location"}; http.collectHeaders(hdr, 1);
+  http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
+  int code = http.GET();
+  Serial.printf("[ota] 1차 GET code=%d\n", code);
+  if (code == 200) { out = url; http.end(); return true; }
+  if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
+    out = http.header("Location");
+    http.end();
+    if (out.length() == 0) { Serial.println(F("[ota] Location 헤더 없음")); return false; }
+    Serial.printf("[ota] 리다이렉트 대상: %.70s...\n", out.c_str());
+    return true;
+  }
+  http.end();
+  return false;
+}
+
 // ─── HTTPS OTA 본체 ────────────────────────────────────────────────────────
 static bool downloadAndFlash(const String& url, const String& expectSha, size_t expectSize) {
+  Serial.printf("[ota] 다운로드 준비. 여유힙 %u bytes\n", ESP.getFreeHeap());
+  // 메모리 확보: 카메라 드라이버 해제(다운로드 동안 불필요, 내부RAM 여유 → TLS 안정화)
+  esp_camera_deinit();
+  g_rt.cameraReady = false;
+  Serial.printf("[ota] 카메라 해제 후 여유힙 %u bytes\n", ESP.getFreeHeap());
+
+  // 1) 리다이렉트 수동 해석 → 실제 CDN URL
+  String realUrl;
+  if (!resolveRedirect(url, realUrl)) { notifySendText("❌ OTA: 리다이렉트 해석 실패"); return false; }
+
+  // 2) 실제 URL 다운로드 (새 보안 클라이언트)
   WiFiClientSecure client; client.setInsecure(); client.setTimeout(20000);
   HTTPClient http;
-  if (!http.begin(client, url)) { notifySendText("❌ OTA: URL 열기 실패"); return false; }
+  if (!http.begin(client, realUrl)) { Serial.println(F("[ota] 다운로드 begin 실패")); notifySendText("❌ OTA: URL 열기 실패"); return false; }
   http.addHeader("Accept", "application/octet-stream");
-  // GitHub Release 자산은 302로 CDN(objects.githubusercontent.com 등)으로 리다이렉트되므로 추적 필수
-  http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
   int code = http.GET();
+  Serial.printf("[ota] 다운로드 GET code=%d\n", code);
   if (code != 200) { http.end(); notifySendText("❌ OTA: HTTP " + String(code)); return false; }
 
   int len = http.getSize();
