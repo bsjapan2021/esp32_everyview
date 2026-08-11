@@ -6,6 +6,7 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include "esp_task_wdt.h"
 
 // otaupd / portal 액션 (약결합)
 extern void otaCheckAndApply(bool force);
@@ -178,6 +179,7 @@ void notifyFlushQueue() {
   if (!g_rt.wifiConnected || strlen(g_cfg.tgChatId) == 0) return;
   auto pending = storageQueuePopAll();
   for (auto& line : pending) {
+    esp_task_wdt_reset();                 // 큐 다량 재전송 중 워치독 리셋 방지
     StaticJsonDocument<512> d;
     if (deserializeJson(d, line)) continue;
     String cap = d["caption"] | "";

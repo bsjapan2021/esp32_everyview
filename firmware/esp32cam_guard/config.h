@@ -8,8 +8,8 @@
 // ============================================================================
 
 // ─── 펌웨어 버전 (SemVer, OTA 비교 기준) ────────────────────────────────────
-#define FW_VERSION      "1.4.2"
-#define FW_BUILD        "20260811.3"
+#define FW_VERSION      "1.4.3"
+#define FW_BUILD        "20260811.4"
 #define FW_NAME         "ESP32CAM-Guard"
 
 // ─── 캡티브 포털(AP) 설정 — FR-1.1 ─────────────────────────────────────────
@@ -90,7 +90,7 @@
 #define DEFAULT_DEVICE_NAME     "CAM-01"
 
 // ─── 안정성 — FR-8 ─────────────────────────────────────────────────────────
-#define WDT_TIMEOUT_SEC         30            // TWDT (FR-8.1)
+#define WDT_TIMEOUT_SEC         60            // TWDT (FR-8.1) — 네트워크 블로킹 여유 확보
 #define WIFI_RETRY_INTERVAL_MS  10000         // (FR-8.2)
 #define WIFI_MAX_RETRY          10            // 10회 실패 시 재부팅
 #define HEAP_MIN_STREAM_BYTES   40000         // 힙 40KB 미만 시 스트림 종료 (FR-8.4)

@@ -224,10 +224,10 @@ void setup() {
   // 3) 자가점검 통과 시 OTA 이미지 유효 확정(롤백 취소) — FR-6.3.3
   if (cam && portalConnected()) otaMarkValidAfterSelfTest();
 
-  // 4) 워치독 (FR-8.1)
+  // 4) 워치독 (FR-8.1) — 코어가 이미 짧은 타임아웃으로 init 했으므로 reconfigure로 60초 적용
 #if defined(ESP_ARDUINO_VERSION) && ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3,0,0)
   esp_task_wdt_config_t wcfg = { .timeout_ms = WDT_TIMEOUT_SEC * 1000, .idle_core_mask = 0, .trigger_panic = true };
-  esp_task_wdt_init(&wcfg);
+  if (esp_task_wdt_reconfigure(&wcfg) != ESP_OK) esp_task_wdt_init(&wcfg);  // 이미 init됨 → 재설정
 #else
   esp_task_wdt_init(WDT_TIMEOUT_SEC, true);
 #endif
