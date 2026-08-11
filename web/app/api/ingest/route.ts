@@ -1,4 +1,4 @@
-import { authenticateDevice } from "@/lib/device-auth";
+import { authenticateDevice, ensureDevice } from "@/lib/device-auth";
 import { getServiceClient, isSupabaseServerConfigured } from "@/lib/supabase/server";
 import { ingestSchema } from "@/lib/validation";
 import { readJson, ok, validate, serverError } from "@/lib/http";
@@ -25,8 +25,15 @@ export async function POST(req: Request) {
   const detectedAt = input.detected_at ?? new Date().toISOString();
   const thumbUrl = normalizeThumb(input.thumb_b64);
 
-  if (!isSupabaseServerConfigured() || !auth.device) {
-    // Unconfigured / unknown device: acknowledge without persisting (demo mode).
+  // 미등록 기기는 자동 등록(self-register) 후 이벤트 저장
+  const device =
+    auth.device ??
+    (isSupabaseServerConfigured()
+      ? await ensureDevice(auth.deviceKey, input.device_name)
+      : null);
+
+  if (!isSupabaseServerConfigured() || !device) {
+    // Unconfigured device: acknowledge without persisting (demo mode).
     return ok(
       {
         id: uid(),
@@ -43,7 +50,7 @@ export async function POST(req: Request) {
     const { data, error } = await supabase
       .from("events")
       .insert({
-        device_id: auth.device.id,
+        device_id: device.id,
         detected_at: detectedAt,
         detected_epoch:
           input.detected_epoch ?? Math.floor(new Date(detectedAt).getTime() / 1000),

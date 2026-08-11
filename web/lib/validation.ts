@@ -13,6 +13,7 @@ export const triggerSchema = z.enum(
 
 /** POST /api/ingest — event meta + optional small base64 thumbnail. */
 export const ingestSchema = z.object({
+  device_name: z.string().max(64).optional(),
   detected_at: z.string().min(1).optional(),
   detected_epoch: z.number().int().nonnegative().optional(),
   time_synced: z.boolean().optional(),
@@ -45,6 +46,7 @@ export type MediaCompleteInput = z.infer<typeof mediaCompleteSchema>;
 
 /** POST /api/heartbeat — 1-minute status report. */
 export const heartbeatSchema = z.object({
+  device_name: z.string().max(64).optional(),
   fw_version: z.string().max(50).optional(),
   rssi: z.number().int().optional(),
   sd_used_pct: z.number().int().min(0).max(100).optional(),

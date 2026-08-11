@@ -56,12 +56,43 @@ export async function authenticateDevice(
       .eq("device_key", key)
       .maybeSingle();
     if (error) throw error;
-    if (!data) {
-      return unauthorized("등록되지 않은 디바이스 키입니다.");
-    }
-    return { ok: true, deviceKey: key, device: data as Device };
+    // Unknown key: allow through with device: null so routes can self-register it.
+    return { ok: true, deviceKey: key, device: (data as Device) ?? null };
   } catch {
     // DB error: still authenticate on key presence to avoid dropping events.
     return { ok: true, deviceKey: key, device: null };
+  }
+}
+
+/**
+ * Self-registration: insert the device on first contact (device_key is its
+ * credential). Never overwrites a dashboard-edited row (ignoreDuplicates).
+ * Returns the resolved device row (existing or newly created).
+ */
+export async function ensureDevice(
+  deviceKey: string,
+  name?: string,
+  fwVersion?: string,
+): Promise<Device | null> {
+  if (!isSupabaseServerConfigured()) return null;
+  try {
+    const supabase = getServiceClient();
+    await supabase.from("devices").upsert(
+      {
+        device_key: deviceKey,
+        name: name && name.length ? name : "CAM",
+        fw_version: fwVersion ?? null,
+        last_seen_at: new Date().toISOString(),
+      },
+      { onConflict: "device_key", ignoreDuplicates: true },
+    );
+    const { data } = await supabase
+      .from("devices")
+      .select("*")
+      .eq("device_key", deviceKey)
+      .maybeSingle();
+    return (data as Device) ?? null;
+  } catch {
+    return null;
   }
 }
