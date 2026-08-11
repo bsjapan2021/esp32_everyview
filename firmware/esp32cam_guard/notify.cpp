@@ -267,13 +267,13 @@ void notifyPoll() {
 
     if (upd.containsKey("message")) {
       JsonObject msg = upd["message"];
-      String chatId  = String((long long)(msg["chat"]["id"] | 0));
+      String chatId  = String((long long)(msg["chat"]["id"] | 0LL));  // chat_id는 32비트 초과 → 64비트
       String fromU   = msg["from"]["username"] | "";
       String text    = msg["text"] | "";
       if (text.length()) handleCommand(chatId, fromU, text);
     } else if (upd.containsKey("callback_query")) {
       JsonObject cq = upd["callback_query"];
-      String chatId = String((long long)(cq["message"]["chat"]["id"] | 0));
+      String chatId = String((long long)(cq["message"]["chat"]["id"] | 0LL));  // 64비트 chat_id
       String data   = cq["data"] | "";
       handleCallback(chatId, data);
     }
