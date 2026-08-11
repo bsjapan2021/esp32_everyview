@@ -254,12 +254,22 @@ void notifyPoll() {
   if (millis() - s_lastPoll < 3000) return;              // 3초 주기
   s_lastPoll = millis();
 
-  String q = "?timeout=1&limit=5&offset=" + String(s_updateOffset);
+  String q = "?timeout=1&limit=3&offset=" + String(s_updateOffset);
   String resp;
   if (!tgApiGet("getUpdates", q, resp)) return;
 
-  DynamicJsonDocument doc(8192);
-  if (deserializeJson(doc, resp)) return;
+  // callback_query(버튼)는 원본 사진 메시지 전체(사진 변형·캡션·키보드)를 포함해 크다.
+  // 필요한 필드만 필터 파싱 → 버퍼 초과로 파싱 실패해 버튼이 무시되던 문제 해결.
+  StaticJsonDocument<384> filter;
+  filter["result"][0]["update_id"] = true;
+  filter["result"][0]["message"]["chat"]["id"] = true;
+  filter["result"][0]["message"]["from"]["username"] = true;
+  filter["result"][0]["message"]["text"] = true;
+  filter["result"][0]["callback_query"]["message"]["chat"]["id"] = true;
+  filter["result"][0]["callback_query"]["data"] = true;
+
+  DynamicJsonDocument doc(4096);
+  if (deserializeJson(doc, resp, DeserializationOption::Filter(filter))) return;
   JsonArray result = doc["result"].as<JsonArray>();
   for (JsonObject upd : result) {
     long updateId = upd["update_id"] | 0;
