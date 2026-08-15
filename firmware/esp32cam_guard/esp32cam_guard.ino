@@ -13,6 +13,7 @@
 #include <SD_MMC.h>
 #include <ArduinoJson.h>
 #include "esp_task_wdt.h"
+#include "esp_system.h"
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 
@@ -38,6 +39,37 @@ static std::vector<UnsyncedEvt> s_unsynced;
 static bool s_wasSynced = false;
 
 static uint32_t s_lastDetect = 0, s_lastPurge = 0, s_lastFlush = 0, s_lastHeartbeatMsg = 0;
+
+// ─── 워치독 완화/복원 (v1.4.7) ─────────────────────────────────────────────
+//  기존엔 이벤트 구간에서 WDT를 delete → 그 안에서 한 번 멈추면(hang) 영구 정지.
+//  대신 타임아웃만 크게(reconfigure) 늘려 task 구독은 유지 → 긴 이벤트는 통과하되
+//  진짜 무한대기는 자동 재부팅으로 복구. 구독 유지라 esp_task_wdt_reset 급식도 유효.
+static void wdtSetTimeout(uint32_t sec) {
+#if defined(ESP_ARDUINO_VERSION) && ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3,0,0)
+  esp_task_wdt_config_t w = { .timeout_ms = sec * 1000, .idle_core_mask = 0, .trigger_panic = true };
+  esp_task_wdt_reconfigure(&w);
+#else
+  (void)sec;  // 구버전 코어: reconfigure 미지원 → 완화 생략(기존 동작 유지)
+#endif
+}
+static inline void wdtEnterEvent() { wdtSetTimeout(WDT_EVENT_TIMEOUT_SEC); }
+static inline void wdtExitEvent()  { wdtSetTimeout(WDT_TIMEOUT_SEC); esp_task_wdt_reset(); }
+
+// ─── 재시작 원인 문자열 (v1.4.7 원격 진단) ─────────────────────────────────
+static const char* resetReasonStr() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:  return "전원투입";
+    case ESP_RST_SW:       return "SW리셋";
+    case ESP_RST_PANIC:    return "패닉(크래시)";
+    case ESP_RST_INT_WDT:  return "INT워치독";
+    case ESP_RST_TASK_WDT: return "TASK워치독(hang)";
+    case ESP_RST_WDT:      return "워치독";
+    case ESP_RST_BROWNOUT: return "전압강하(전원)";
+    case ESP_RST_DEEPSLEEP: return "딥슬립복귀";
+    case ESP_RST_EXT:      return "외부리셋";
+    default:               return "알수없음";
+  }
+}
 
 // ─── 이벤트 캡션 구성 (FR-5.3) ─────────────────────────────────────────────
 static String buildCaption(const String& iso, const char* trig, uint8_t score,
@@ -95,8 +127,8 @@ static uint8_t* readFile(const String& path, size_t* len, size_t maxLen) {
 // ─── 이벤트 처리 파이프라인 ────────────────────────────────────────────────
 static void handleEvent(const MotionResult& r) {
   // 이벤트 처리(캡처+SD+텔레그램 재시도 백오프+클라우드 업로드)는 장시간 블로킹이라
-  // loopTask를 이 구간만 워치독 감시에서 해제(재부팅 루프 방지). 끝에서 복원.
-  esp_task_wdt_delete(NULL);
+  // 워치독 타임아웃을 크게 완화(delete 아님) — 긴 이벤트는 통과, 진짜 hang은 자동 재부팅. 끝에서 복원.
+  wdtEnterEvent();
   time_t t = tkNow();
   String iso   = tkStampISO(t);
   String base  = storageEventBase(t);           // /DCIM/date/EVT_...
@@ -192,7 +224,7 @@ static void handleEvent(const MotionResult& r) {
     if (n) notifySystem("💾 순환삭제 " + String(n) + "개 폴더 (SD " + String(g_rt.sdUsedPct) + "%)");
   }
 
-  esp_task_wdt_add(NULL);   // 워치독 감시 복원
+  wdtExitEvent();   // 워치독 타임아웃 60초로 복원 + 급식
 }
 
 // ─── NTP 미동기 이벤트 소급보정 (FR-4.7) ───────────────────────────────────
@@ -255,12 +287,15 @@ void setup() {
 #endif
   esp_task_wdt_add(NULL);
 
-  // 5) 부팅 알림 (FR-5.8)
+  // 5) 부팅 알림 (FR-5.8) — v1.4.7: 재시작 원인 + 남은 메모리(원격 진단)
   String boot = "🟢 " + String(g_cfg.deviceName) + " 부팅 완료\n";
   boot += "v" + String(FW_VERSION) + " · IP " + String(g_rt.ipAddr) + "\n";
   boot += "카메라 " + String(cam ? "OK" : "실패") + " · SD " + String(g_rt.sdMounted ? "OK" : "없음");
   boot += " · 시각 " + String(g_rt.timeSynced ? "동기" : "미동기");
-  boot += " · 플래시 " + String(g_rt.flashKB) + "KB(" + g_rt.partScheme + ")";
+  boot += " · 플래시 " + String(g_rt.flashKB) + "KB(" + g_rt.partScheme + ")\n";
+  // ⬇ 직전 재시작 원인 — TASK워치독(hang)/패닉(크래시)/전압강하(전원) 등으로 원인 진단
+  boot += "↺ 원인: " + String(resetReasonStr());
+  boot += " · 힙 " + String(ESP.getFreeHeap() / 1024) + "KB";
   notifySystem(boot);
 
   Serial.println(F("=== setup 완료, 감시 시작 ===\n"));
@@ -272,6 +307,18 @@ void loop() {
   portalLoop();                 // 재연결/시리얼/AP LED
   tkLoop();
   handleUnsyncedCorrection();
+
+  // WiFi 장기 끊김 감시 (v1.4.7) — 한 번 접속됐다가 3분 넘게 끊기면 재부팅해
+  // setup부터 재연결 시도(크래시 후 WiFi 미복구로 오프라인 방치되던 문제 방어).
+  // 최초 AP 설정 중(한 번도 접속 안 됨)에는 발동 안 함(s_wifiOkMs==0).
+  static uint32_t s_wifiOkMs = 0;
+  if (portalConnected()) {
+    s_wifiOkMs = millis();
+  } else if (s_wifiOkMs != 0 && millis() - s_wifiOkMs > WIFI_DOWN_REBOOT_MS) {
+    Serial.println(F("[net] WiFi 장기 끊김 → 재부팅(감시 공백 최소화)"));
+    delay(100);
+    ESP.restart();
+  }
 
   if (portalConnected()) {
     notifyPoll();               // 텔레그램 명령

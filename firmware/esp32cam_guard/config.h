@@ -8,8 +8,8 @@
 // ============================================================================
 
 // ─── 펌웨어 버전 (SemVer, OTA 비교 기준) ────────────────────────────────────
-#define FW_VERSION      "1.4.6"
-#define FW_BUILD        "20260811.7"
+#define FW_VERSION      "1.4.7"
+#define FW_BUILD        "20260812.1"
 #define FW_NAME         "ESP32CAM-Guard"
 
 // ─── 캡티브 포털(AP) 설정 — FR-1.1 ─────────────────────────────────────────
@@ -91,6 +91,9 @@
 
 // ─── 안정성 — FR-8 ─────────────────────────────────────────────────────────
 #define WDT_TIMEOUT_SEC         60            // TWDT (FR-8.1) — 네트워크 블로킹 여유 확보
+#define WDT_EVENT_TIMEOUT_SEC   300           // 이벤트 처리 중 완화 타임아웃 — 긴 이벤트는
+                                              // 통과, 진짜 hang(무한대기)만 자동 재부팅(v1.4.7)
+#define WIFI_DOWN_REBOOT_MS     180000        // WiFi 3분 이상 끊기면 재부팅(감시 공백 최소화, v1.4.7)
 #define WIFI_RETRY_INTERVAL_MS  10000         // (FR-8.2)
 #define WIFI_MAX_RETRY          10            // 10회 실패 시 재부팅
 #define HEAP_MIN_STREAM_BYTES   40000         // 힙 40KB 미만 시 스트림 종료 (FR-8.4)
